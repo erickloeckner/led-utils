@@ -44,7 +44,11 @@ impl Leds {
             }
             LedType::Sk9822 => {
                 let mut buffer = [0_u8; 4612];
-                for v in buffer.chunks_mut(4).skip(1 + led_count) { *v = 255; }
+                for i in buffer.chunks_mut(4).skip(1 + led_count).take(1) { 
+                    for j in i {
+                        *j = 255;
+                    }
+                }
                 Self {
                     led_type: led_type,
                     len: led_count,
