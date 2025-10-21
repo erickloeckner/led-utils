@@ -4,6 +4,7 @@ use crate::sprites::RandomSprites;
 #[derive(PartialEq)]
 pub enum LedType {
     Apa102,
+    Sk9822,
     Ws2801,
     Analog,
 }
@@ -27,6 +28,7 @@ impl Leds {
         assert!(led_count <= 1024);
         let buf_end = match led_type {
             LedType::Apa102 => 4 + (led_count * 4) + ((led_count + 1) / 2),
+            LedType::Sk9822 => 4 + (led_count * 4) + 4,
             LedType::Ws2801 => led_count * 3,
             LedType::Analog => 3,
         };
@@ -38,6 +40,16 @@ impl Leds {
                     len: led_count,
                     buf_end: buf_end,
                     buffer: BufferType::Addressable([0; 4612]),
+                }
+            }
+            LedType::Sk9822 => {
+                let mut buffer = BufferType::Addressable([0; 4612]);
+                for v in buffer.chunks_mut(4).skip(1 + led_count) { v = 255; }
+                Self {
+                    led_type: led_type,
+                    len: led_count,
+                    buf_end: buf_end,
+                    buffer: buffer,
                 }
             }
             LedType::Analog => {
@@ -53,7 +65,7 @@ impl Leds {
 
     pub fn all_off(&mut self) {
         match self.led_type {
-            LedType::Apa102 => {
+            LedType::Apa102 | LedType::Sk9822 => {
                 match self.buffer {
                     BufferType::Addressable(ref mut b) => {
                         for (i, v) in b.chunks_mut(4).skip(1).enumerate() {
@@ -108,7 +120,7 @@ impl Leds {
     
     pub fn set_led(&mut self, rgb: Pixel, index: usize) {
         match self.led_type {
-            LedType::Apa102 => {
+            LedType::Apa102 | LedType::Sk9822 => {
                 match self.buffer {
                     BufferType::Addressable(ref mut b) => {
                         match b.chunks_mut(4).skip(1).nth(index) {
@@ -152,7 +164,7 @@ impl Leds {
 
     pub fn fill_gradient(&mut self, start: &PixelHsv, end: &PixelHsv) {
         match self.led_type {
-            LedType::Apa102 => {
+            LedType::Apa102 | LedType::Sk9822 => {
                 match self.buffer {
                     BufferType::Addressable(ref mut b) => {
                         for (i, v) in b.chunks_mut(4).skip(1).enumerate() {
@@ -196,7 +208,7 @@ impl Leds {
 
     pub fn fill_gradient_dual(&mut self, start: &PixelHsv, end: &PixelHsv) {
         match self.led_type {
-            LedType::Apa102 => {
+            LedType::Apa102 | LedType::Sk9822 => {
                 match self.buffer {
                     BufferType::Addressable(ref mut b) => {
                         for (i, v) in b.chunks_mut(4).skip(1).enumerate() {
@@ -244,7 +256,7 @@ impl Leds {
 
     pub fn fill_triangle(&mut self, start: &PixelHsv, end: &PixelHsv, phase: f32) {
         match self.led_type {
-            LedType::Apa102 => {
+            LedType::Apa102 | LedType::Sk9822 => {
                 match self.buffer {
                     BufferType::Addressable(ref mut b) => {
                         for (i, v) in b.chunks_mut(4).skip(1).enumerate() {
@@ -295,7 +307,7 @@ impl Leds {
     
     pub fn fill_random(&mut self, start: &PixelHsv, end: &PixelHsv, sprites: &RandomSprites) {
         match self.led_type {
-            LedType::Apa102 => {
+            LedType::Apa102 | LedType::Sk9822 => {
                 match self.buffer {
                     BufferType::Addressable(ref mut b) => {
                         b.chunks_mut(4).skip(1).zip(sprites.get_sprites()).for_each(|(led, sprite)| {
