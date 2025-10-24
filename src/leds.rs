@@ -124,7 +124,8 @@ impl Leds {
 
     pub fn data(&self) -> &[u8] {
         match self.buffer {
-            BufferType::Addressable(ref b) | BufferType::Analog(ref b) => &b[..self.buf_end],
+            BufferType::Addressable(ref b) => &b[..self.buf_end],
+            BufferType::Analog(ref b) => &b[..self.buf_end],
         }
     }
     
