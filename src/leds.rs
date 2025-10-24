@@ -123,7 +123,9 @@ impl Leds {
     }
 
     pub fn data(&self) -> &[u8] {
-        &self.buffer[..self.buf_end]
+        match self.buffer {
+            BufferType::Addressable(ref b) | BufferType::Analog(ref b) => &b[..self.buf_end],
+        }
     }
     
     pub fn set_led(&mut self, rgb: Pixel, index: usize) {
