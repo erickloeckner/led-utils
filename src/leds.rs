@@ -14,6 +14,12 @@ pub enum BufferType {
     Analog([u16; 3]),
 }
 
+impl BufferType {
+    pub fn data() {
+        ;
+    }
+}
+
 pub struct Leds {
     led_type: LedType,
     len: usize,
@@ -122,7 +128,7 @@ impl Leds {
         &self.buffer
     }
 
-    pub fn data(&self) -> &[u8] {
+    pub fn data<T: Integer>(&self) -> &[T] {
         match self.buffer {
             BufferType::Addressable(ref b) => &b[..self.buf_end],
             BufferType::Analog(ref b) => &b[..self.buf_end],
