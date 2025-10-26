@@ -9,6 +9,10 @@ pub enum LedType {
     //Analog,
 }
 
+pub struct Apa102;
+pub struct Sk9822;
+pub struct Ws2801;
+
 /*
 pub enum BufferType {
     Addressable([u8; 4612]),
@@ -16,14 +20,257 @@ pub enum BufferType {
 }
 */
 
-pub struct Leds {
-    led_type: LedType,
+pub struct Leds<L> {
+    led_type: L,
     len: usize,
     buf_end: usize,
     buffer: [u8; 4612],
     //buffer: BufferType,
 }
 
+impl<L> Leds<L> {
+    pub fn led_type(&self) -> &L {
+        &self.led_type
+    }
+    
+    pub fn len(&self) -> usize {
+        self.len
+    }
+    
+    pub fn buf_end(&self) -> usize {
+        self.buf_end
+    }
+
+    pub fn data(&self) -> &[u8] {
+        &self.buffer[..self.buf_end]
+    }
+}
+
+impl Leds<Apa102> {
+    pub fn new(led_count: usize) -> Self {
+        // LED count is limited to 1024
+        assert!(led_count <= 1024);
+        let buf_end = 4 + (led_count * 4) + ((led_count + 1) / 2);
+        let mut buffer = [0_u8; 4612];
+        for (i, v) in buffer.chunks_mut(4).skip(1).enumerate() {
+            if i >= led_count { break; }
+            v[0] = 255;
+        }
+        Self {
+            led_type: Apa102,
+            len: led_count,
+            buf_end: buf_end,
+            buffer: buffer,
+        }
+    }
+    
+    pub fn all_off(&mut self) {
+        for (i, v) in self.buffer.chunks_mut(4).skip(1).enumerate() {
+            if i >= self.len { break; }
+            //~ v[0] = 255;
+            v[1] = 0;
+            v[2] = 0;
+            v[3] = 0;
+        }
+    }
+    
+    pub fn set_led(&mut self, rgb: Pixel, index: usize) {
+        match self.buffer.chunks_mut(4).skip(1).nth(index) {
+            Some(v) => {
+                set_array_apa102(v, rgb);
+            },
+            None => {},
+        }
+    }
+    
+    pub fn fill_gradient(&mut self, start: &PixelHsv, end: &PixelHsv) {
+        for (i, v) in self.buffer.chunks_mut(4).skip(1).enumerate() {
+            if i >= self.len { break; }
+            let pos = position(i, self.len);
+            let rgb = hsv_interp(&start, &end, pos).to_rgb();
+            set_array_apa102(v, rgb);
+        }
+    }
+    
+    pub fn fill_gradient_dual(&mut self, start: &PixelHsv, end: &PixelHsv) {
+        for (i, v) in self.buffer.chunks_mut(4).skip(1).enumerate() {
+            if i >= self.len { break; }
+            let pos = position(i, self.len);
+            let mut pos_bipolar = pos * 2.0 - 1.0;
+            if pos_bipolar < 0.0 { pos_bipolar = pos_bipolar * -1.0 }
+            let rgb = hsv_interp(&end, &start, pos_bipolar).to_rgb();
+            set_array_apa102(v, rgb);
+        }
+    }
+    
+    pub fn fill_triangle(&mut self, start: &PixelHsv, end: &PixelHsv, phase: f32) {
+        for (i, v) in self.buffer.chunks_mut(4).skip(1).enumerate() {
+            if i >= self.len { break; }
+            let pos = position(i, self.len);
+            let mut pos_triangle = ((pos + phase) % 1.0) * 2.0 - 1.0;
+            if pos_triangle < 0.0 { pos_triangle = pos_triangle * -1.0 }
+            let rgb = hsv_interp(&end, &start, pos_triangle).to_rgb();
+            set_array_apa102(v, rgb);
+        }
+    }
+    
+    pub fn fill_random(&mut self, start: &PixelHsv, end: &PixelHsv, sprites: &RandomSprites) {
+        self.buffer.chunks_mut(4).skip(1).zip(sprites.get_sprites()).for_each(|(led, sprite)| {
+            let rgb = hsv_interp(&end, &start, sprite.get_value()).to_rgb();
+            set_array_apa102(led, rgb);
+        });
+    }
+}
+
+impl Leds<Sk9822> {
+    pub fn new(led_count: usize) -> Self {
+        // LED count is limited to 1024
+        assert!(led_count <= 1024);
+        let buf_end = 4 + (led_count * 4) + 4;
+        let mut buffer = [0_u8; 4612];
+        for (index, i) in buffer.chunks_mut(4).skip(1).enumerate() {
+            if index >= led_count { break; }
+            i[0] = 255;
+        }
+        for i in buffer.chunks_mut(4).skip(1 + led_count).take(1) { 
+            for j in i {
+                *j = 255;
+            }
+        }
+        Self {
+            led_type: Sk9822,
+            len: led_count,
+            buf_end: buf_end,
+            buffer: buffer,
+        }
+    }
+    
+    pub fn all_off(&mut self) {
+        for (i, v) in self.buffer.chunks_mut(4).skip(1).enumerate() {
+            if i >= self.len { break; }
+            //~ v[0] = 255;
+            v[1] = 0;
+            v[2] = 0;
+            v[3] = 0;
+        }
+    }
+    
+    pub fn set_led(&mut self, rgb: Pixel, index: usize) {
+        match self.buffer.chunks_mut(4).skip(1).nth(index) {
+            Some(v) => {
+                set_array_apa102(v, rgb);
+            },
+            None => {},
+        }
+    }
+    
+    pub fn fill_gradient(&mut self, start: &PixelHsv, end: &PixelHsv) {
+        for (i, v) in self.buffer.chunks_mut(4).skip(1).enumerate() {
+            if i >= self.len { break; }
+            let pos = position(i, self.len);
+            let rgb = hsv_interp(&start, &end, pos).to_rgb();
+            set_array_apa102(v, rgb);
+        }
+    }
+    
+    pub fn fill_gradient_dual(&mut self, start: &PixelHsv, end: &PixelHsv) {
+        for (i, v) in self.buffer.chunks_mut(4).skip(1).enumerate() {
+            if i >= self.len { break; }
+            let pos = position(i, self.len);
+            let mut pos_bipolar = pos * 2.0 - 1.0;
+            if pos_bipolar < 0.0 { pos_bipolar = pos_bipolar * -1.0 }
+            let rgb = hsv_interp(&end, &start, pos_bipolar).to_rgb();
+            set_array_apa102(v, rgb);
+        }
+    }
+    
+    pub fn fill_triangle(&mut self, start: &PixelHsv, end: &PixelHsv, phase: f32) {
+        for (i, v) in self.buffer.chunks_mut(4).skip(1).enumerate() {
+            if i >= self.len { break; }
+            let pos = position(i, self.len);
+            let mut pos_triangle = ((pos + phase) % 1.0) * 2.0 - 1.0;
+            if pos_triangle < 0.0 { pos_triangle = pos_triangle * -1.0 }
+            let rgb = hsv_interp(&end, &start, pos_triangle).to_rgb();
+            set_array_apa102(v, rgb);
+        }
+    }
+    
+    pub fn fill_random(&mut self, start: &PixelHsv, end: &PixelHsv, sprites: &RandomSprites) {
+        self.buffer.chunks_mut(4).skip(1).zip(sprites.get_sprites()).for_each(|(led, sprite)| {
+            let rgb = hsv_interp(&end, &start, sprite.get_value()).to_rgb();
+            set_array_apa102(led, rgb);
+        });
+    }
+}
+
+impl Leds<Ws2801> {
+    pub fn new(led_count: usize) -> Self {
+        // LED count is limited to 1024
+        assert!(led_count <= 1024);
+        let buf_end = led_count * 3;
+        Self {
+            led_type: Ws2801,
+            len: led_count,
+            buf_end: buf_end,
+            buffer: [0; 4612],
+        }
+    }
+    
+    pub fn all_off(&mut self) {
+        for v in self.buffer.iter_mut() {
+            *v = 0;
+        }
+    }
+    
+    pub fn set_led(&mut self, rgb: Pixel, index: usize) {
+        match self.buffer.chunks_mut(3).nth(index) {
+            Some(v) => {
+                set_array_ws2801(v, rgb);
+            },
+            None => {},
+        }
+    }
+    
+    pub fn fill_gradient(&mut self, start: &PixelHsv, end: &PixelHsv) {
+        for (i, v) in self.buffer.chunks_mut(3).enumerate() {
+            if i >= self.len { break; }
+            let pos = position(i, self.len);
+            let rgb = hsv_interp(&start, &end, pos).to_rgb();
+            set_array_ws2801(v, rgb);
+        }
+    }
+    
+    pub fn fill_gradient_dual(&mut self, start: &PixelHsv, end: &PixelHsv) {
+        for (i, v) in self.buffer.chunks_mut(3).enumerate() {
+            if i >= self.len { break; }
+            let pos = position(i, self.len);
+            let mut pos_bipolar = pos * 2.0 - 1.0;
+            if pos_bipolar < 0.0 { pos_bipolar = pos_bipolar * -1.0 }
+            let rgb = hsv_interp(&end, &start, pos_bipolar).to_rgb();
+            set_array_ws2801(v, rgb);
+        }
+    }
+    
+    pub fn fill_triangle(&mut self, start: &PixelHsv, end: &PixelHsv, phase: f32) {
+        for (i, v) in self.buffer.chunks_mut(3).enumerate() {
+            if i >= self.len { break; }
+            let pos = position(i, self.len);
+            let mut pos_triangle = ((pos + phase) % 1.0) * 2.0 - 1.0;
+            if pos_triangle < 0.0 { pos_triangle = pos_triangle * -1.0 }
+            let rgb = hsv_interp(&end, &start, pos_triangle).to_rgb();
+            set_array_ws2801(v, rgb);
+        }
+    }
+    
+    pub fn fill_random(&mut self, start: &PixelHsv, end: &PixelHsv, sprites: &RandomSprites) {
+        self.buffer.chunks_mut(3).zip(sprites.get_sprites()).for_each(|(led, sprite)| {
+            let rgb = hsv_interp(&end, &start, sprite.get_value()).to_rgb();
+            set_array_ws2801(led, rgb);
+        });
+    }
+}
+
+/*
 impl Leds {
     pub fn new(led_count: usize, led_type: LedType) -> Self {
         // LED count is limited to 1024
@@ -469,13 +716,14 @@ impl Leds {
         }
     }
 }
+*/
 
 fn position(index: usize, len: usize) -> f32 {
     (index as f32) / ((len - 1) as f32)
 }
 
 fn set_array_apa102(led: &mut [u8], rgb: Pixel) {
-    led[0] = 255;
+    //~ led[0] = 255;
     led[1] = rgb.get_b();
     led[2] = rgb.get_g();
     led[3] = rgb.get_r();
