@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use crate::colors::{hsv_interp, Pixel, PixelHsv};
 use crate::sprites::RandomSprites;
 
@@ -9,8 +10,13 @@ pub enum LedType {
     //Analog,
 }
 
+#[derive(Debug)]
 pub struct Apa102;
+
+#[derive(Debug)]
 pub struct Sk9822;
+
+#[derive(Debug)]
 pub struct Ws2801;
 
 /*
