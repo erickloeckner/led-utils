@@ -276,6 +276,70 @@ impl Leds for Ws2801 {
     }
 }
 
+pub enum LedType {
+    Apa102(Apa102),
+    Sk9822(Sk9822),
+    Ws2801(Ws2801),
+}
+
+impl Leds for LedType {
+    fn data(&self) -> &[u8] {
+        match self {
+            LedType::Apa102(i) => i.data(),
+            LedType::Sk9822(i) => i.data(),
+            LedType::Ws2801(i) => i.data(),
+        }
+    }
+    
+    fn all_off(&mut self) {
+        match self {
+            LedType::Apa102(i) => i.all_off(),
+            LedType::Sk9822(i) => i.all_off(),
+            LedType::Ws2801(i) => i.all_off(),
+        }
+    }
+    
+    fn set_led(&mut self, rgb: Pixel, index: usize) {
+        match self {
+            LedType::Apa102(i) => i.set_led(rgb, index),
+            LedType::Sk9822(i) => i.set_led(rgb, index),
+            LedType::Ws2801(i) => i.set_led(rgb, index),
+        }
+    }
+    
+    fn fill_gradient(&mut self, start: &PixelHsv, end: &PixelHsv) {
+        match self {
+            LedType::Apa102(i) => i.fill_gradient(start, end),
+            LedType::Sk9822(i) => i.fill_gradient(start, end),
+            LedType::Ws2801(i) => i.fill_gradient(start, end),
+        }
+    }
+    
+    fn fill_gradient_dual(&mut self, start: &PixelHsv, end: &PixelHsv) {
+        match self {
+            LedType::Apa102(i) => i.fill_gradient_dual(start, end),
+            LedType::Sk9822(i) => i.fill_gradient_dual(start, end),
+            LedType::Ws2801(i) => i.fill_gradient_dual(start, end),
+        }
+    }
+    
+    fn fill_triangle(&mut self, start: &PixelHsv, end: &PixelHsv, phase: f32) {
+        match self {
+            LedType::Apa102(i) => i.fill_triangle(start, end, phase),
+            LedType::Sk9822(i) => i.fill_triangle(start, end, phase),
+            LedType::Ws2801(i) => i.fill_triangle(start, end, phase),
+        }
+    }
+    
+    fn fill_random(&mut self, start: &PixelHsv, end: &PixelHsv, sprites: &RandomSprites) {
+        match self {
+            LedType::Apa102(i) => i.fill_random(start, end, sprites),
+            LedType::Sk9822(i) => i.fill_random(start, end, sprites),
+            LedType::Ws2801(i) => i.fill_random(start, end, sprites),
+        }
+    }
+}
+
 fn position(index: usize, len: usize) -> f32 {
     (index as f32) / ((len - 1) as f32)
 }
